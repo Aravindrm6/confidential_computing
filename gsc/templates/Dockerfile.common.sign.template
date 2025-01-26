@@ -1,0 +1,34 @@
+# Sign image in a separate stage to ensure that signing key is never part of the final image
+FROM {{image}} as unsigned_image
+
+# BUILD_ID is a random UUID provided by `gsc sign-image` command, to be able to remove
+# the temporary intermediate-stage image later in `gsc sign-image`, to free disk space
+ARG BUILD_ID
+LABEL build_id=$BUILD_ID
+
+COPY gsc-signer-key.pem /gramine/app_files/gsc-signer-key.pem
+
+ARG passphrase
+
+RUN {% block path %}{% endblock %} gramine-sgx-sign \
+      --key /gramine/app_files/gsc-signer-key.pem \
+      --manifest /gramine/app_files/entrypoint.manifest \
+      --output /gramine/app_files/entrypoint.manifest.sgx \
+      ${passphrase:+--passphrase "$passphrase"}
+
+# This trick removes all temporary files from the previous commands (including gsc-signer-key.pem
+# and passphrase)
+FROM {{image}}
+
+COPY --from=unsigned_image /gramine/app_files/*.sig /gramine/app_files/
+COPY --from=unsigned_image /gramine/app_files/*.sgx /gramine/app_files/
+
+{% if args.remove_gramine_deps is trueish %}
+# Temporarily switch to the root user to uninstall packages
+USER root
+
+{% block uninstall %}{% endblock %}
+
+# Switch back to original app_image user
+USER {{app_user}}
+{% endif %}

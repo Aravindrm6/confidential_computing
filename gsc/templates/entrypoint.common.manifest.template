@@ -1,0 +1,29 @@
+libos.entrypoint = "/gramine/app_files/{{binary_basename}}"
+
+# Add distro-specific `loader.entrypoint` and `loader.env.LD_LIBRARY_PATH`
+{% block loader %}{% endblock %}
+
+loader.env.PATH = "{{"{{env_path}}"}}"
+loader.log_level = {% if buildtype == "debug" %} "all" {% else %} "error" {% endif %}
+
+fs.root.type = "chroot"
+fs.root.uri = "file:/"
+
+# Gramine's default working dir is '/', so change the working directory to the desired one
+fs.start_dir = "{{working_dir}}"
+
+sgx.debug = {% if buildtype != "release" %} true {% else %} false {% endif %}
+
+{% if insecure_args %}
+# !! INSECURE !! Allow passing command-line arguments from the host without validation.
+# Most Docker images rely on runtime arguments and hence, a more general technique is required.
+# The issue is documented at https://github.com/gramineproject/gsc/issues/13.
+loader.insecure__use_cmdline_argv = true
+{% else %}
+loader.argv_src_file = "file:/gramine/app_files/trusted_argv"
+sgx.trusted_files = [
+  "file:/gramine/app_files/trusted_argv",
+]
+{% endif %}
+
+# All trusted files and the user defined manifest specifications should be after this line

@@ -1,0 +1,22 @@
+{% if Registry|length %}
+FROM {{Registry}}/{{Distro}} AS gramine
+{% else %}
+FROM {{Distro}} AS gramine
+{% endif %}
+
+# Install distro-specific packages to build Gramine (e.g., python3, protobuf, tomli, etc.)
+{% block install %}{% endblock %}
+
+RUN git clone {{Gramine.Repository}} /gramine
+
+RUN cd /gramine \
+    && git fetch origin {{Gramine.Branch}} \
+    && git checkout {{Gramine.Branch}}
+
+RUN cd /gramine \
+    && meson setup build/ --prefix="/gramine/meson_build_output" \
+       --buildtype={{buildtype}} \
+       -Ddirect=enabled -Dsgx=enabled \
+       {% if template_path(Distro).startswith('ubuntu:') %}-Ddcap=enabled{% endif %} \
+    && ninja -C build \
+    && ninja -C build install

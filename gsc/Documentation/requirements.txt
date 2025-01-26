@@ -1,0 +1,9 @@
+#
+# keep versions synced with version in Debian stable
+#
+
+# https://tracker.debian.org/pkg/sphinx
+sphinx==5.3.*
+
+# https://tracker.debian.org/pkg/sphinx-rtd-theme
+sphinx_rtd_theme==1.2.*
